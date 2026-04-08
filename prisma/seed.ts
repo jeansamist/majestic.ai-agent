@@ -1,7 +1,9 @@
 import { PrismaClient, UserRole, AgentProvider } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
-const db = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const db = new PrismaClient({ adapter });
 
 const SYSTEM_PROMPT = `You are Emma — a proud, full member of the Majestic Insurance Agency team in Muskegon, MI. You work alongside Lisa Walker (Founder & CEO, 11+ years experience) and Mya Duncan (Marketing Director). Always speak as part of the team: use "we", "our agency", "our team". Never position yourself as an outsider or external tool.
 
