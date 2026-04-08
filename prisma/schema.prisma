@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  SALES_AGENT
+  VIEWER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUOTED
+  FOLLOW_UP
+  CLOSED
+}
+
+enum ConversationSource {
+  PUBLIC_PAGE
+  EMBED_WIDGET
+  WEBSITE
+  FACEBOOK
+  MANUAL
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum EventType {
+  LEAD_CAPTURED
+  CONSENT
+  QUOTE_REQUEST
+  CLAIM_REQUEST
+  POLICY_REQUEST
+  COMPLAINT
+  APPOINTMENT_REQUESTED
+  CONVERSATION_SUMMARY
+}
+
+enum AgentProvider {
+  SIMULATED
+  OPENAI
+  CLAUDE
+  MISTRAL
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         UserRole   @default(VIEWER)
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  sessions     Session[]
+  invitesSent  UserInvite[] @relation("InvitedBy")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserInvite {
+  id          String    @id @default(cuid())
+  email       String
+  role        UserRole
+  token       String    @unique
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  invitedBy   User      @relation("InvitedBy", fields: [invitedById], references: [id])
+}
+
+model AgentConfig {
+  id                String        @id @default(cuid())
+  name              String        @default("Emma")
+  title             String        @default("Majestic Insurance · Virtual Assistant")
+  greeting          String        @default("Hi! I'm Emma — welcome to Majestic Insurance!\n\nHow can I help you today? Whether it's a question about coverage, getting a quote, or anything else — I'm right here.")
+  systemPrompt      String        @db.Text
+  photoUrl          String?
+  calendlyUrl       String?
+  provider          AgentProvider @default(SIMULATED)
+  model             String?
+  publicKey         String        @unique @default(cuid())
+  widgetButtonLabel String        @default("Chat with us")
+  widgetEnabled     Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  conversations     Conversation[]
+}
+
+model Lead {
+  id                 String             @id @default(cuid())
+  name               String?
+  email              String?
+  phone              String?
+  interest           String?
+  status             LeadStatus         @default(NEW)
+  consent            Boolean?
+  source             ConversationSource @default(PUBLIC_PAGE)
+  summary            String?            @db.Text
+  lastConversationId String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  conversations      Conversation[]
+}
+
+model Conversation {
+  id            String             @id @default(cuid())
+  source        ConversationSource @default(PUBLIC_PAGE)
+  summary       String?            @db.Text
+  leadId        String?
+  agentConfigId String
+  status        String             @default("active")
+  meta          Json               @default("{}")
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  lead          Lead?              @relation(fields: [leadId], references: [id])
+  agentConfig   AgentConfig        @relation(fields: [agentConfigId], references: [id])
+  messages      Message[]
+  events        ConversationEvent[]
+}
+
+model Message {
+  id               String       @id @default(cuid())
+  conversationId   String
+  role             MessageRole
+  content          String       @db.Text
+  rawTaggedContent String?      @db.Text
+  createdAt        DateTime     @default(now())
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model ConversationEvent {
+  id             String       @id @default(cuid())
+  conversationId String
+  type           EventType
+  payload        Json         @default("{}")
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
