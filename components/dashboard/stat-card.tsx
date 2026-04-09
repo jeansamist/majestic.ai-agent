@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface SparklineProps {
@@ -9,7 +10,7 @@ interface SparklineProps {
   color?: string;
 }
 
-function Sparkline({ data, color = "#d4a82e" }: SparklineProps) {
+function Sparkline({ data, color = "hsl(var(--primary))" }: SparklineProps) {
   if (data.length < 2) return null;
   const max = Math.max(...data);
   const min = Math.min(...data);
@@ -25,11 +26,7 @@ function Sparkline({ data, color = "#d4a82e" }: SparklineProps) {
     .join(" ");
 
   return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      className="mt-2.5 h-7 w-full opacity-65"
-    >
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="mt-3 h-7 w-full opacity-60">
       <polyline
         points={points}
         fill="none"
@@ -52,47 +49,33 @@ interface StatCardProps {
   index?: number;
 }
 
-export function StatCard({
-  label,
-  value,
-  sub,
-  delta,
-  spark,
-  color = "#d4a82e",
-  index = 0,
-}: StatCardProps) {
+export function StatCard({ label, value, sub, delta, spark, color, index = 0 }: StatCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.06 }}
-      className="rounded-2xl border border-gold/18 bg-white/4 p-5"
     >
-      <div className="mb-2.5 text-[11px] font-medium uppercase tracking-[1.1px] text-white/50">
-        {label}
-      </div>
-      <div className="text-[34px] font-bold leading-none text-white" style={{ fontFamily: "serif" }}>
-        {value}
-      </div>
-      <div className="mt-2 flex items-center gap-1.5">
-        {delta !== undefined && (
-          <span
-            className={cn(
-              "flex items-center gap-0.5 text-[11px] font-semibold",
-              delta >= 0 ? "text-emerald-400" : "text-red-400"
+      <Card size="sm">
+        <CardContent className="pt-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            {label}
+          </p>
+          <p className="text-3xl font-bold tracking-tight">{value}</p>
+          <div className="mt-2 flex items-center gap-1.5">
+            {delta !== undefined && (
+              <span className={cn("flex items-center gap-0.5 text-xs font-semibold",
+                delta >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"
+              )}>
+                {delta >= 0 ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
+                {Math.abs(delta)}%
+              </span>
             )}
-          >
-            {delta >= 0 ? (
-              <TrendingUp className="size-3" />
-            ) : (
-              <TrendingDown className="size-3" />
-            )}
-            {Math.abs(delta)}%
-          </span>
-        )}
-        {sub && <span className="text-[11px] text-white/25">{sub}</span>}
-      </div>
-      {spark && <Sparkline data={spark} color={color} />}
+            {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
+          </div>
+          {spark && <Sparkline data={spark} color={color} />}
+        </CardContent>
+      </Card>
     </motion.div>
   );
 }

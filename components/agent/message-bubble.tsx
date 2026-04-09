@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Image from "next/image";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -25,42 +25,23 @@ export function MessageBubble({ message, agentPhotoUrl, agentName = "Emma" }: Me
       transition={{ duration: 0.25, ease: "easeOut" }}
       className={cn("flex gap-2.5", isUser && "flex-row-reverse")}
     >
-      {/* Avatar */}
-      <div className={cn(
-        "size-9 shrink-0 rounded-full flex items-center justify-center overflow-hidden",
-        isUser
-          ? "bg-white/8 border border-white/15 text-sm"
-          : "border-2 border-gold/40 shadow-[0_0_10px_rgba(212,168,46,0.25)]"
-      )}>
-        {isUser ? (
-          <span>👤</span>
-        ) : agentPhotoUrl ? (
-          <Image
-            src={agentPhotoUrl}
-            alt={agentName}
-            width={36}
-            height={36}
-            className="size-full object-cover"
-            onError={() => {}}
-          />
-        ) : (
-          <div className="size-full bg-gradient-to-br from-[#c8900a] to-[#e8c040] flex items-center justify-center text-[#06091a] font-bold text-sm">
-            {agentName[0]}
-          </div>
-        )}
-      </div>
+      <Avatar className="size-8 shrink-0">
+        {!isUser && <AvatarImage src={agentPhotoUrl ?? undefined} alt={agentName} />}
+        <AvatarFallback className={cn("text-xs font-semibold", isUser ? "bg-muted" : "bg-primary text-primary-foreground")}>
+          {isUser ? "You" : agentName[0]}
+        </AvatarFallback>
+      </Avatar>
 
-      {/* Bubble */}
       <div className="flex flex-col gap-1 max-w-[72%]">
-        <div className="text-[10px] uppercase tracking-[0.6px] text-white/30 font-medium px-1">
+        <p className="text-[10px] font-medium text-muted-foreground px-1">
           {isUser ? "You" : agentName}
-        </div>
+        </p>
         <div
           className={cn(
-            "rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
+            "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
             isUser
-              ? "bg-gradient-to-br from-[#c8900a] to-[#d4a820] text-[#06091a] font-semibold rounded-br-[5px]"
-              : "bg-white/5 border border-gold/14 text-white/88 rounded-bl-[5px]"
+              ? "bg-primary text-primary-foreground rounded-br-sm"
+              : "bg-muted text-foreground rounded-bl-sm"
           )}
         >
           {message.content}

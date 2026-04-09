@@ -1,13 +1,6 @@
 "use client";
 
-const INTEREST_COLORS: Record<string, string> = {
-  Auto: "#3b82f6",
-  Home: "#d4a82e",
-  Life: "#ec4899",
-  Boat: "#10b981",
-  Renters: "#a78bfa",
-  Business: "#f59e0b",
-};
+import { Progress } from "@/components/ui/progress";
 
 interface InterestBarsProps {
   data: Record<string, number>;
@@ -18,28 +11,20 @@ export function InterestBars({ data }: InterestBarsProps) {
   const max = entries[0]?.[1] ?? 1;
 
   if (entries.length === 0) {
-    return <p className="text-sm text-white/30 italic">No data yet</p>;
+    return <p className="text-sm text-muted-foreground italic">No data yet</p>;
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3.5">
       {entries.map(([type, count]) => {
-        const color = INTEREST_COLORS[type] ?? "#d4a82e";
         const pct = Math.round((count / max) * 100);
         return (
           <div key={type}>
-            <div className="mb-1.5 flex justify-between">
-              <span className="text-[12px] text-white/90">{type}</span>
-              <span className="text-[12px] font-semibold" style={{ color }}>
-                {count}
-              </span>
+            <div className="mb-1.5 flex justify-between text-sm">
+              <span className="text-foreground">{type}</span>
+              <span className="font-semibold tabular-nums text-primary">{count}</span>
             </div>
-            <div className="h-[5px] overflow-hidden rounded-full bg-white/6">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${pct}%`, background: color }}
-              />
-            </div>
+            <Progress value={pct} className="h-1.5" />
           </div>
         );
       })}

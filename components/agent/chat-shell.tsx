@@ -7,6 +7,7 @@ import { ChatHeader } from "./chat-header";
 import { MessageList } from "./message-list";
 import type { ChatMessage } from "./message-list";
 import { Suggestions } from "./suggestions";
+import { Button } from "@/components/ui/button";
 import { SendHorizonal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,29 +22,20 @@ interface ChatShellConfig {
   isEmbed?: boolean;
 }
 
-interface ChatShellProps {
-  config: ChatShellConfig;
-}
-
-export function ChatShell({ config }: ChatShellProps) {
+export function ChatShell({ config }: { config: ChatShellConfig }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | undefined>(
-    config.conversationId
-  );
+  const [conversationId, setConversationId] = useState<string | undefined>(config.conversationId);
   const [initialized, setInitialized] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Initialize conversation and show greeting
   useEffect(() => {
     if (initialized) return;
     setInitialized(true);
-
     const init = async () => {
       try {
         let convId = config.conversationId;
-
         if (!convId) {
           const res = await axios.post("/api/public/agent/conversations", {
             agentPublicKey: config.agentPublicKey,
@@ -51,55 +43,31 @@ export function ChatShell({ config }: ChatShellProps) {
           convId = res.data.conversationId as string;
           setConversationId(convId);
         }
-
-        // Show greeting as first assistant message
         if (config.greeting) {
           setMessages([{ role: "assistant", content: config.greeting }]);
         }
       } catch {
-        setMessages([{
-          role: "assistant",
-          content: "Hi! I'm Emma — welcome to Majestic Insurance! How can I help you today?",
-        }]);
+        setMessages([{ role: "assistant", content: "Hi! I'm here to help. How can I assist you today?" }]);
       }
     };
-
     init();
   }, [config, initialized]);
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
-
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
     setLoading(true);
-
-    // Simulate typing delay for realism
     await new Promise((r) => setTimeout(r, 700 + Math.random() * 600));
-
     try {
-      const res = await axios.post("/api/public/agent/chat", {
-        conversationId,
-        message: trimmed,
-      });
-
-      const { content, showCalendly } = res.data as {
-        content: string;
-        showCalendly: boolean;
-      };
-
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content, showCalendly },
-      ]);
+      const res = await axios.post("/api/public/agent/chat", { conversationId, message: trimmed });
+      const { content, showCalendly } = res.data as { content: string; showCalendly: boolean };
+      setMessages((prev) => [...prev, { role: "assistant", content, showCalendly }]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: "Something went wrong on my end — please try again in a moment.",
-        },
+        { role: "assistant", content: "Something went wrong — please try again." },
       ]);
     } finally {
       setLoading(false);
@@ -108,20 +76,13 @@ export function ChatShell({ config }: ChatShellProps) {
   }, [conversationId, loading]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(input);
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
   };
 
   const handleBooked = useCallback(() => {
     setMessages((prev) => [
       ...prev,
-      {
-        role: "assistant",
-        content:
-          "Your appointment with Lisa is confirmed! 🎉 She'll have all your details ready so there's no need to repeat yourself.",
-      },
+      { role: "assistant", content: "Your appointment is confirmed! We'll have all your details ready." },
     ]);
   }, []);
 
@@ -132,8 +93,8 @@ export function ChatShell({ config }: ChatShellProps) {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        "flex flex-col overflow-hidden rounded-[28px] border border-gold/22 bg-white/[0.025] shadow-[0_50px_100px_rgba(0,0,0,0.65)] backdrop-blur-2xl",
-        config.isEmbed ? "w-full h-full rounded-none" : "w-full max-w-[840px]"
+        "flex flex-col overflow-hidden rounded-2xl border bg-background shadow-xl",
+        config.isEmbed ? "w-full h-full rounded-none" : "w-full max-w-3xl"
       )}
     >
       <ChatHeader
@@ -158,7 +119,7 @@ export function ChatShell({ config }: ChatShellProps) {
       </AnimatePresence>
 
       {/* Input row */}
-      <div className="flex items-end gap-3 border-t border-gold/10 px-6 py-4">
+      <div className="flex items-end gap-3 border-t px-4 py-3">
         <textarea
           ref={inputRef}
           value={input}
@@ -166,15 +127,16 @@ export function ChatShell({ config }: ChatShellProps) {
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
           rows={1}
-          className="majestic-scroll flex-1 resize-none rounded-[18px] border border-gold/20 bg-white/5 px-4 py-3 text-sm leading-relaxed text-white/90 placeholder-white/27 outline-none transition-colors focus:border-gold/50 min-h-[50px] max-h-[120px]"
+          className="flex-1 resize-none rounded-xl border bg-muted/40 px-3 py-2.5 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-ring min-h-11 max-h-28"
         />
-        <button
+        <Button
           onClick={() => sendMessage(input)}
           disabled={!input.trim() || loading}
-          className="flex size-[50px] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#c8900a] to-[#e0b830] text-[#06091a] shadow-[0_4px_18px_rgba(200,144,10,0.32)] transition-all hover:scale-105 hover:shadow-[0_6px_24px_rgba(200,144,10,0.5)] disabled:opacity-44 disabled:cursor-not-allowed disabled:scale-100 cursor-pointer"
+          size="icon"
+          className="shrink-0"
         >
-          <SendHorizonal className="size-5" />
-        </button>
+          <SendHorizonal className="size-4" />
+        </Button>
       </div>
     </motion.div>
   );

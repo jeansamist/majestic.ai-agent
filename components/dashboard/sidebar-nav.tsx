@@ -2,13 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
 import {
   LayoutDashboard, Users, MessageSquare, BarChart3,
-  UserCog, Settings, Shield, ChevronRight,
+  UserCog, Settings, Shield,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { SessionUser } from "@/types";
 
 const NAV_ITEMS = [
@@ -25,7 +35,6 @@ interface SidebarNavProps {
   newLeadsCount?: number;
   agentName?: string;
   agentPhotoUrl?: string | null;
-  open: boolean;
 }
 
 export function SidebarNav({
@@ -33,95 +42,85 @@ export function SidebarNav({
   newLeadsCount = 0,
   agentName = "Emma",
   agentPhotoUrl,
-  open,
 }: SidebarNavProps) {
   const pathname = usePathname();
 
   return (
-    <motion.aside
-      animate={{ width: open ? 220 : 0 }}
-      transition={{ duration: 0.24, ease: "easeInOut" }}
-      className="shrink-0 overflow-hidden border-r border-gold/18 bg-gradient-to-b from-[#0f1840] to-[#0c1228] flex flex-col sticky top-0 h-screen z-40"
-    >
-      <div className="flex w-[220px] flex-col h-full overflow-hidden">
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 border-b border-gold/18 px-[18px] py-5 shrink-0">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#c8900a] to-[#e8c040] text-lg shadow-[0_0_16px_rgba(212,168,46,0.3)]">
-            🛡️
+    <Sidebar>
+      <SidebarHeader className="border-b border-sidebar-border p-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Shield className="size-4" />
           </div>
           <div>
-            <div className="font-bold text-gold-2 text-[15px] leading-tight">Majestic</div>
-            <div className="text-[10px] tracking-[0.8px] text-white/25">Insurance Agency</div>
+            <p className="text-sm font-semibold text-sidebar-foreground leading-tight">Majestic</p>
+            <p className="text-xs text-sidebar-foreground/50">Insurance Agency</p>
           </div>
         </div>
+      </SidebarHeader>
 
-        {/* Nav */}
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 py-3">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2.5 text-[13px] font-medium transition-all duration-150",
-                  active
-                    ? "border-gold bg-gold/12 text-gold-2 font-semibold"
-                    : "border-transparent text-white/50 hover:bg-white/5 hover:text-white/80"
-                )}
-              >
-                <Icon className="size-4 shrink-0" />
-                {item.label}
-                {item.key === "leads" && newLeadsCount > 0 && (
-                  <span className="ml-auto rounded-full bg-gold/18 px-2 py-0.5 text-[10px] font-bold text-gold-2">
-                    {newLeadsCount}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarMenu>
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const active = pathname.startsWith(item.href);
+              return (
+                <SidebarMenuItem key={item.key}>
+                  <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                    <Link href={item.href}>
+                      <Icon />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                  {item.key === "leads" && newLeadsCount > 0 && (
+                    <SidebarMenuBadge>{newLeadsCount}</SidebarMenuBadge>
+                  )}
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
 
-        {/* Active agent preview */}
-        <div className="border-b border-gold/18 border-t px-4 py-3 shrink-0">
-          <p className="mb-2 text-[10px] uppercase tracking-[0.8px] text-white/25">
-            Active Agent
-          </p>
-          <div className="flex items-center gap-2.5">
-            <div className="size-8 shrink-0 overflow-hidden rounded-full border-2 border-gold/30 bg-gold/10">
-              {agentPhotoUrl ? (
-                <Image src={agentPhotoUrl} alt={agentName} width={32} height={32} className="size-full object-cover" />
-              ) : (
-                <div className="size-full flex items-center justify-center text-sm">🤖</div>
-              )}
-            </div>
-            <div>
-              <div className="text-[12px] font-medium text-white/90">{agentName}</div>
-              <div className="flex items-center gap-1 text-[10px] text-emerald-400">
-                <div className="size-[5px] rounded-full bg-emerald-400" />
-                Online
-              </div>
-            </div>
-          </div>
-        </div>
+      <SidebarSeparator />
 
-        {/* User */}
-        <div className="flex items-center gap-2.5 px-[17px] py-3 shrink-0">
-          <div className="relative shrink-0">
-            <div className="size-8 rounded-full bg-gold/15 border border-gold/30 flex items-center justify-center text-gold font-bold text-xs">
-              {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-            </div>
-            <div className="absolute bottom-0 right-0 size-2 rounded-full bg-emerald-400 border-2 border-[#0c1228]" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-[12px] font-medium text-white/90">{user.name}</div>
-            <div className="text-[10px] text-emerald-400">
-              {user.role.replace("_", " ")} · Online
+      <div className="px-4 py-3">
+        <p className="mb-2 text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wide">
+          Active Agent
+        </p>
+        <div className="flex items-center gap-2.5">
+          <Avatar className="size-8">
+            <AvatarImage src={agentPhotoUrl ?? undefined} alt={agentName} />
+            <AvatarFallback>{agentName[0]}</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-sm font-medium text-sidebar-foreground">{agentName}</p>
+            <div className="flex items-center gap-1.5 text-xs text-sidebar-foreground/50">
+              <span className="size-1.5 rounded-full bg-green-500" />
+              Online
             </div>
           </div>
         </div>
       </div>
-    </motion.aside>
+
+      <SidebarSeparator />
+
+      <SidebarFooter className="p-4">
+        <div className="flex items-center gap-2.5">
+          <Avatar className="size-8">
+            <AvatarFallback className="text-xs font-semibold">
+              {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-sidebar-foreground">{user.name}</p>
+            <p className="text-xs text-sidebar-foreground/50 capitalize">
+              {user.role.toLowerCase().replace("_", " ")}
+            </p>
+          </div>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
