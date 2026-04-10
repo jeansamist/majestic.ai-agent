@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { AgentProvider, UserRole } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 
 export async function GET() {
   try {
@@ -27,7 +27,7 @@ const updateSchema = z.object({
   systemPrompt: z.string().optional(),
   photoUrl: z.string().url().optional().nullable(),
   calendlyUrl: z.string().url().optional().nullable(),
-  provider: z.nativeEnum(AgentProvider).optional(),
+  provider: z.enum(["SIMULATED", "OPENAI", "CLAUDE", "MISTRAL", "GEMINI"]).optional(),
   model: z.string().optional().nullable(),
   widgetButtonLabel: z.string().optional(),
   widgetEnabled: z.boolean().optional(),
@@ -48,7 +48,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Config not found" }, { status: 404 });
     }
 
-    config = await db.agentConfig.update({ where: { id: config.id }, data });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    config = await db.agentConfig.update({ where: { id: config.id }, data: data as any });
     return NextResponse.json(config);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -57,6 +58,8 @@ export async function PATCH(request: NextRequest) {
     if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("[PATCH /api/admin/agent-config]", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: "Internal server error", detail: msg }, { status: 500 });
   }
 }

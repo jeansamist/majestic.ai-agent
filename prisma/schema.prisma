@@ -50,6 +50,7 @@ enum AgentProvider {
   OPENAI
   CLAUDE
   MISTRAL
+  GEMINI
 }
 
 model User {
