@@ -248,7 +248,7 @@ export class ClaudeAgent extends BaseAgent {
     }
 
     // Extract text and tool_use blocks from the response content array
-    const text = response.content
+    let text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("\n")
@@ -264,6 +264,47 @@ export class ClaudeAgent extends BaseAgent {
         if (mapped.event) events.push(mapped.event);
         if (mapped.showCalendly) showCalendly = true;
       }
+    }
+
+    // Claude stops with stop_reason "tool_use" when it only returns tool calls.
+    // Continue the conversation by sending back tool results so Claude generates
+    // the actual user-visible reply.
+    if (!text && response.stop_reason === "tool_use") {
+      const toolUseBlocks = response.content.filter(
+        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+      );
+      const toolResults: MessageParam = {
+        role: "user",
+        content: toolUseBlocks.map((b) => ({
+          type: "tool_result" as const,
+          tool_use_id: b.id,
+          content: "success",
+        })),
+      };
+
+      let continuation: Anthropic.Message;
+      try {
+        continuation = await this.client.messages.create({
+          model: modelName,
+          max_tokens: 2048,
+          system: systemPrompt,
+          messages: [
+            ...claudeMessages,
+            { role: "assistant" as const, content: response.content },
+            toolResults,
+          ],
+          tools: CLAUDE_TOOLS,
+        });
+      } catch {
+        // If continuation fails, fall through with empty text
+        continuation = { content: [] } as unknown as Anthropic.Message;
+      }
+
+      text = continuation.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
+        .trim();
     }
 
     return {

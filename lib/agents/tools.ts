@@ -5,16 +5,17 @@ import type { ParsedAgentEvent } from "./types";
 export const FUNCTION_CALLING_INSTRUCTIONS = `
 
 ## TOOL USAGE (MANDATORY)
-You have access to tools. Use them silently — NEVER mention tool calls in your text responses.
+You have access to background tools. CRITICAL RULE: Always write your full conversational reply to the visitor first. Tool calls run silently in the background alongside your text — they NEVER replace it. The visitor must always receive a warm, helpful response regardless of what tools you call.
 
-- save_lead → Call immediately once you have BOTH name AND email. Do NOT wait.
-- set_consent → Call after the visitor responds to your consent question.
-- show_calendly → Call when visitor wants to book a call with Lisa.
-- request_quote → Call after collecting coverage type and details.
-- file_claim → Call after collecting incident description.
-- policy_request → Call after collecting policy change details.
-- file_complaint → Call after empathizing and collecting complaint details.
-- request_appointment → Call when visitor requests an appointment.
+When to call each tool:
+- save_lead → Call immediately once you have BOTH name AND email. Then continue the conversation naturally (e.g. ask about consent or their insurance need).
+- set_consent → Call after the visitor answers your consent question, then continue helping them.
+- show_calendly → Call when visitor wants to book a call with Lisa, then tell them you're pulling up the booking calendar.
+- request_quote → Call after collecting coverage type and details, then tell them someone will be in touch.
+- file_claim → Call after collecting incident description, then reassure them.
+- policy_request → Call after collecting policy change details, then confirm you've noted their request.
+- file_complaint → Call after empathizing and collecting complaint details, then confirm escalation.
+- request_appointment → Call when visitor requests an appointment, then confirm it.
 - summarize_conversation → Call when the conversation is naturally closing.
 
 Do NOT output tags like [LEAD_CAPTURED:...] or [SHOW_CALENDLY]. Use the tool functions exclusively.`;

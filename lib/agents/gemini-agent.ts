@@ -244,7 +244,7 @@ export class GeminiAgent extends BaseAgent {
       throw err;
     }
 
-    const text = response.text ?? "";
+    let text = response.text ?? "";
     const functionCalls = response.functionCalls ?? [];
 
     const events: ParsedAgentEvent[] = [];
@@ -255,6 +255,43 @@ export class GeminiAgent extends BaseAgent {
       const mapped = mapFunctionCallToEvent(call.name ?? "", args);
       if (mapped.event) events.push(mapped.event);
       if (mapped.showCalendly) showCalendly = true;
+    }
+
+    // If Gemini only returned function calls with no text, send back function
+    // results so the model generates the user-visible conversational reply.
+    if (!text && functionCalls.length > 0) {
+      try {
+        const functionResults = functionCalls.map((call) => ({
+          role: "function" as const,
+          parts: [
+            {
+              functionResponse: {
+                name: call.name ?? "",
+                response: { result: "success" },
+              },
+            },
+          ],
+        }));
+
+        const continuation = await this.ai.models.generateContent({
+          model: modelName,
+          contents: [
+            ...contents,
+            {
+              role: "model",
+              parts: functionCalls.map((call) => ({
+                functionCall: { name: call.name ?? "", args: call.args ?? {} },
+              })),
+            },
+            ...functionResults,
+          ],
+          config: { systemInstruction: systemPrompt },
+        });
+
+        text = continuation.text ?? "";
+      } catch {
+        // If continuation fails, fall through with empty text
+      }
     }
 
     return {
