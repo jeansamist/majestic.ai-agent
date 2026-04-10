@@ -1,23 +1,24 @@
-import { GoogleGenAI, Type, ApiError, type FunctionDeclaration } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
+import type { Tool, MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { BaseAgent } from "./base-agent";
 import type { AgentReplyResult, ChatMessage, ParsedAgentEvent } from "./types";
 import type { AgentConfig } from "@prisma/client";
 import { FUNCTION_CALLING_INSTRUCTIONS, mapFunctionCallToEvent } from "./tools";
 
-// ── Function declarations (tools) ───────────────────────────────────────────
+// ── Tool declarations (Claude / JSON Schema format) ───────────────────────────
 
-const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
+const CLAUDE_TOOLS: Tool[] = [
   {
     name: "save_lead",
     description:
       "Call this immediately once you have collected BOTH the visitor's name AND email address. Saves their contact information so the Majestic team can follow up.",
-    parameters: {
-      type: Type.OBJECT,
+    input_schema: {
+      type: "object",
       properties: {
-        name: { type: Type.STRING, description: "The visitor's full name" },
-        email: { type: Type.STRING, description: "The visitor's email address" },
+        name: { type: "string", description: "The visitor's full name" },
+        email: { type: "string", description: "The visitor's email address" },
         intent: {
-          type: Type.STRING,
+          type: "string",
           enum: [
             "quote_request",
             "claim",
@@ -29,7 +30,7 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
           description: "The visitor's primary intent for this conversation",
         },
         phone: {
-          type: Type.STRING,
+          type: "string",
           description: "Visitor's phone number if they provided it",
         },
       },
@@ -40,11 +41,11 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "set_consent",
     description:
       "Record whether the visitor has agreed to receive marketing communications from Majestic Insurance. Call this after asking the consent question.",
-    parameters: {
-      type: Type.OBJECT,
+    input_schema: {
+      type: "object",
       properties: {
         granted: {
-          type: Type.BOOLEAN,
+          type: "boolean",
           description: "true if the visitor consented, false if they declined",
         },
       },
@@ -55,8 +56,8 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "show_calendly",
     description:
       "Show the Calendly booking widget so the visitor can schedule a call with Lisa Walker. Call this when the visitor wants to book an appointment.",
-    parameters: {
-      type: Type.OBJECT,
+    input_schema: {
+      type: "object",
       properties: {},
     },
   },
@@ -64,16 +65,16 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "request_quote",
     description:
       "Submit a quote request after collecting coverage details from the visitor.",
-    parameters: {
-      type: Type.OBJECT,
+    input_schema: {
+      type: "object",
       properties: {
         coverage_type: {
-          type: Type.STRING,
+          type: "string",
           description:
             "Type of coverage (e.g. Auto, Home, Life, Boat, Renters, Business)",
         },
         details: {
-          type: Type.STRING,
+          type: "string",
           description: "Details the visitor provided about their quote request",
         },
       },
@@ -84,19 +85,19 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "file_claim",
     description:
       "File an insurance claim on behalf of the visitor. Call after collecting the incident description.",
-    parameters: {
-      type: Type.OBJECT,
+    input_schema: {
+      type: "object",
       properties: {
         policy: {
-          type: Type.STRING,
+          type: "string",
           description: "Policy number if the visitor provided it",
         },
         description: {
-          type: Type.STRING,
+          type: "string",
           description: "Description of the incident or claim",
         },
         contact_pref: {
-          type: Type.STRING,
+          type: "string",
           description: "Visitor's preferred contact method (email, phone, etc.)",
         },
       },
@@ -107,15 +108,16 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "policy_request",
     description:
       "Submit a policy management request (cancel, renew, update, payment, etc.).",
-    parameters: {
-      type: Type.OBJECT,
+    input_schema: {
+      type: "object",
       properties: {
         type: {
-          type: Type.STRING,
-          description: "Type of policy request: cancel | renew | update | payment | other",
+          type: "string",
+          description:
+            "Type of policy request: cancel | renew | update | payment | other",
         },
         request: {
-          type: Type.STRING,
+          type: "string",
           description: "Details of what the visitor needs",
         },
       },
@@ -126,11 +128,11 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "file_complaint",
     description:
       "Record a complaint or concern raised by the visitor. Call after empathizing and collecting complaint details.",
-    parameters: {
-      type: Type.OBJECT,
+    input_schema: {
+      type: "object",
       properties: {
         description: {
-          type: Type.STRING,
+          type: "string",
           description: "Full description of the complaint",
         },
       },
@@ -141,15 +143,15 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "request_appointment",
     description:
       "Record that the visitor has requested an appointment with the team.",
-    parameters: {
-      type: Type.OBJECT,
+    input_schema: {
+      type: "object",
       properties: {
         preferred_time: {
-          type: Type.STRING,
+          type: "string",
           description: "Visitor's preferred time/date if mentioned",
         },
         reason: {
-          type: Type.STRING,
+          type: "string",
           description: "Reason for the appointment",
         },
       },
@@ -160,24 +162,24 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
     name: "summarize_conversation",
     description:
       "Summarize the conversation when it is naturally closing. Call once toward the end of a completed interaction.",
-    parameters: {
-      type: Type.OBJECT,
+    input_schema: {
+      type: "object",
       properties: {
         intent: {
-          type: Type.STRING,
+          type: "string",
           description: "The primary intent of the conversation",
         },
         key_points: {
-          type: Type.STRING,
+          type: "string",
           description: "Key points and outcomes from the conversation",
         },
         status: {
-          type: Type.STRING,
+          type: "string",
           enum: ["active", "completed", "follow_up", "claim_filed", "quoted"],
           description: "Final status of the conversation",
         },
         next_action: {
-          type: Type.STRING,
+          type: "string",
           description: "What the Majestic team should do next",
         },
       },
@@ -186,55 +188,56 @@ const FUNCTION_DECLARATIONS: FunctionDeclaration[] = [
   },
 ];
 
-// ── GeminiAgent ──────────────────────────────────────────────────────────────
+// ── ClaudeAgent ───────────────────────────────────────────────────────────────
 
-export class GeminiAgent extends BaseAgent {
-  private ai: GoogleGenAI;
+export class ClaudeAgent extends BaseAgent {
+  private client: Anthropic;
 
   constructor(config: AgentConfig) {
     super(config);
-    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+    this.client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
   }
 
   protected async generateRaw(): Promise<string> {
-    throw new Error("GeminiAgent.generateReply() is used directly");
+    throw new Error("ClaudeAgent.generateReply() is used directly");
   }
 
   override async generateReply(messages: ChatMessage[]): Promise<AgentReplyResult> {
-    const modelName = this.config.model ?? "gemini-2.5-flash";
+    const modelName = this.config.model ?? "claude-sonnet-4-6";
     const systemPrompt = this.config.systemPrompt + FUNCTION_CALLING_INSTRUCTIONS;
 
-    // Convert ChatMessage[] → Gemini multi-turn format
-    const contents = messages
+    // Convert ChatMessage[] → Anthropic multi-turn format (drop system role)
+    const claudeMessages: MessageParam[] = messages
       .filter((m) => m.role !== "system")
       .map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
+        role: m.role as "user" | "assistant",
+        content: m.content,
       }));
 
-    let response;
+    let response: Anthropic.Message;
     try {
-      response = await this.ai.models.generateContent({
+      response = await this.client.messages.create({
         model: modelName,
-        contents,
-        config: {
-          systemInstruction: systemPrompt,
-          tools: [{ functionDeclarations: FUNCTION_DECLARATIONS }],
-        },
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: claudeMessages,
+        tools: CLAUDE_TOOLS,
       });
     } catch (err) {
-      if (err instanceof ApiError) {
+      if (err instanceof Anthropic.APIError) {
         if (err.status === 429) {
           return {
-            content: "I'm temporarily unavailable due to high demand on the AI service. Please try again in a moment.",
+            content:
+              "I'm temporarily unavailable due to high demand on the AI service. Please try again in a moment.",
             rawContent: "",
             events: [],
             uiDirectives: { showCalendly: false },
           };
         }
-        if (err.status === 404) {
+        if (err.status === 401) {
           return {
-            content: "The selected AI model is currently unavailable. Please ask your administrator to check the provider settings.",
+            content:
+              "The AI service is currently unavailable. Please ask your administrator to check the API key.",
             rawContent: "",
             events: [],
             uiDirectives: { showCalendly: false },
@@ -244,17 +247,23 @@ export class GeminiAgent extends BaseAgent {
       throw err;
     }
 
-    const text = response.text ?? "";
-    const functionCalls = response.functionCalls ?? [];
+    // Extract text and tool_use blocks from the response content array
+    const text = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("\n")
+      .trim();
 
     const events: ParsedAgentEvent[] = [];
     let showCalendly = false;
 
-    for (const call of functionCalls) {
-      const args = (call.args ?? {}) as Record<string, unknown>;
-      const mapped = mapFunctionCallToEvent(call.name ?? "", args);
-      if (mapped.event) events.push(mapped.event);
-      if (mapped.showCalendly) showCalendly = true;
+    for (const block of response.content) {
+      if (block.type === "tool_use") {
+        const args = (block.input ?? {}) as Record<string, unknown>;
+        const mapped = mapFunctionCallToEvent(block.name, args);
+        if (mapped.event) events.push(mapped.event);
+        if (mapped.showCalendly) showCalendly = true;
+      }
     }
 
     return {

@@ -46,8 +46,9 @@ const PROVIDERS: ProviderInfo[] = [
     label: "Anthropic Claude",
     available: !!process.env.ANTHROPIC_API_KEY,
     models: [
-      { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-      { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
+      { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (Recommended)" },
+      { value: "claude-opus-4-6", label: "Claude Opus 4.6 (Most capable)" },
+      { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 (Fastest)" },
     ],
     requiresKey: "ANTHROPIC_API_KEY",
   },
