@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { FileText } from "lucide-react";
 import { StatusBadge, SourceBadge, InterestBadge } from "@/components/shared/status-badge";
 import { LeadAvatar } from "@/components/shared/lead-avatar";
 import type { LeadStatus } from "@prisma/client";
@@ -82,6 +83,13 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
 
   const messages = fullLead?.conversations?.[0]?.messages ?? [];
 
+  const quotePayload = fullLead?.conversations
+    ?.flatMap((c) => c.events)
+    ?.find((e) => e.type === "QUOTE_REQUEST")?.payload as
+    | { coverage_type?: string; details?: string }
+    | undefined;
+  const hasQuote = !!(quotePayload?.coverage_type && quotePayload?.details);
+
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="flex w-120 flex-col gap-0 p-0 sm:max-w-120">
@@ -107,6 +115,12 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
           <TabsList className="my-4 w-full">
             <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
             <TabsTrigger value="summary" className="flex-1">Summary</TabsTrigger>
+            {hasQuote && (
+              <TabsTrigger value="quote" className="flex-1 gap-1">
+                <FileText className="size-3" />
+                Quote
+              </TabsTrigger>
+            )}
             <TabsTrigger value="ai" className="flex-1" onClick={loadAI}>AI Recs</TabsTrigger>
           </TabsList>
 
@@ -180,6 +194,29 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
                 ))}
               </div>
             </TabsContent>
+
+            {/* QUOTE */}
+            {hasQuote && (
+              <TabsContent value="quote" className="mt-0">
+                <div className="mb-4 rounded-lg border bg-muted/30 p-3.5">
+                  <p className="text-sm font-semibold mb-1">Quote Request</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Submitted by the visitor during the chat session.
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-4 flex flex-col gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Coverage type</p>
+                    <p className="text-sm font-semibold capitalize">{quotePayload!.coverage_type}</p>
+                  </div>
+                  <Separator />
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Details provided</p>
+                    <p className="text-sm leading-relaxed">{quotePayload!.details}</p>
+                  </div>
+                </div>
+              </TabsContent>
+            )}
 
             {/* AI RECS */}
             <TabsContent value="ai" className="mt-0">

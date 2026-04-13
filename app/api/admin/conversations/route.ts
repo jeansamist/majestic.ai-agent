@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          lead: { select: { name: true, email: true } },
+          lead: { select: { id: true, name: true, email: true } },
           _count: { select: { messages: true } },
         },
       }),

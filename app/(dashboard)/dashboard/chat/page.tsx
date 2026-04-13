@@ -21,7 +21,15 @@ export default function ChatPage() {
   const [convos, setConvos] = useState<ConversationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<{ id: string; name: string | null; email: string | null; status: string; source: string; createdAt: string } | null>(null);
+  const [selected, setSelected] = useState<{
+    conversationId: string;
+    leadId: string;
+    name: string | null;
+    email: string | null;
+    status: string;
+    source: string;
+    createdAt: string;
+  } | null>(null);
 
   useEffect(() => {
     axios.get("/api/admin/conversations")
@@ -29,6 +37,19 @@ export default function ChatPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const selectConvo = (c: ConversationRow) => {
+    if (!c.lead) return;
+    setSelected({
+      conversationId: c.id,
+      leadId: c.lead.id,
+      name: c.lead.name,
+      email: c.lead.email,
+      status: c.status,
+      source: c.source,
+      createdAt: String(c.createdAt),
+    });
+  };
 
   const filtered = convos.filter((c) => {
     if (!search) return true;
@@ -73,20 +94,9 @@ export default function ChatPage() {
               transition={{ delay: i * 0.04 }}
             >
               <Card
-                onClick={() => {
-                  if (c.lead) {
-                    setSelected({
-                      id: c.id,
-                      name: c.lead.name,
-                      email: c.lead.email,
-                      status: c.status,
-                      source: c.source,
-                      createdAt: String(c.createdAt),
-                    });
-                  }
-                }}
+                onClick={() => selectConvo(c)}
                 className={`cursor-pointer transition-colors hover:bg-muted/40 ${
-                  selected?.id === c.id ? "border-primary/40 bg-muted/40" : ""
+                  selected?.conversationId === c.id ? "border-primary/40 bg-muted/40" : ""
                 }`}
               >
                 <CardContent className="pt-0">
@@ -110,10 +120,7 @@ export default function ChatPage() {
                         <Button
                           variant="outline"
                           size="xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (c.lead) setSelected({ id: c.id, name: c.lead.name, email: c.lead.email, status: c.status, source: c.source, createdAt: String(c.createdAt) });
-                          }}
+                          onClick={(e) => { e.stopPropagation(); selectConvo(c); }}
                         >
                           View Thread
                         </Button>
@@ -136,7 +143,7 @@ export default function ChatPage() {
       {selected && (
         <LeadDetailPanel
           lead={{
-            id: selected.id,
+            id: selected.leadId,
             name: selected.name,
             email: selected.email,
             phone: null,

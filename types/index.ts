@@ -61,6 +61,11 @@ export interface DashboardSummary {
   recentLeads: LeadRow[];
 }
 
+export interface QuoteRequest {
+  coverage_type: string;
+  details: string;
+}
+
 export interface LeadRow {
   id: string;
   name: string | null;
@@ -74,15 +79,18 @@ export interface LeadRow {
   createdAt: string;
   updatedAt: string;
   _count?: { conversations: number };
+  /** Populated when a complete QUOTE_REQUEST event exists for this lead */
+  quoteRequest: QuoteRequest | null;
 }
 
 export interface ConversationRow {
   id: string;
+  leadId: string | null;
   source: ConversationSource;
   summary: string | null;
   status: string;
   createdAt: string;
-  lead: { name: string | null; email: string | null } | null;
+  lead: { id: string; name: string | null; email: string | null } | null;
   _count: { messages: number };
 }
 
