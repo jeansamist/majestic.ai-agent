@@ -55,7 +55,7 @@ export function mapFunctionCallToEvent(
       return {
         event: {
           type: "QUOTE_REQUEST",
-          payload: { type: args.coverage_type, details: args.details },
+          payload: { coverage_type: args.coverage_type, details: args.details },
         },
         showCalendly: false,
       };

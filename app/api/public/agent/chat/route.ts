@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
         });
         if (conv?.leadId) {
           const statusMap: Partial<Record<string, LeadStatus>> = {
-            QUOTE_REQUEST: LeadStatus.QUOTED,
+            QUOTE_REQUEST: LeadStatus.FOLLOW_UP,
             APPOINTMENT_REQUESTED: LeadStatus.CONTACTED,
             CLAIM_REQUEST: LeadStatus.FOLLOW_UP,
             POLICY_REQUEST: LeadStatus.CONTACTED,

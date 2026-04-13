@@ -58,26 +58,29 @@ interface LeadDetailPanelProps {
 }
 
 export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
-  const [fullLead, setFullLead] = useState<FullLead | null>(null);
-  const [loadingFull, setLoadingFull] = useState(false);
+  // fetchState tracks which lead was loaded to derive loading/null without synchronous setState
+  const [fetchState, setFetchState] = useState<{ leadId: string; data: FullLead | null } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiRecs, setAiRecs] = useState<ReturnType<typeof makeRecs> | null>(null);
+  const [aiRecs, setAiRecs] = useState<{ leadId: string; recs: ReturnType<typeof makeRecs> } | null>(null);
 
   useEffect(() => {
-    setFullLead(null);
-    setAiRecs(null);
-    setLoadingFull(true);
+    let cancelled = false;
     axios.get(`/api/admin/leads/${lead.id}`)
-      .then((r) => setFullLead(r.data as FullLead))
-      .catch(() => {})
-      .finally(() => setLoadingFull(false));
+      .then((r) => { if (!cancelled) setFetchState({ leadId: lead.id, data: r.data as FullLead }); })
+      .catch(() => { if (!cancelled) setFetchState({ leadId: lead.id, data: null }); });
+    return () => { cancelled = true; };
   }, [lead.id]);
 
+  // Derived — automatically reset when lead.id changes without synchronous setState
+  const loadingFull = fetchState?.leadId !== lead.id;
+  const fullLead = fetchState?.leadId === lead.id ? fetchState.data : null;
+  const currentAiRecs = aiRecs?.leadId === lead.id ? aiRecs.recs : null;
+
   const loadAI = async () => {
-    if (aiRecs) return;
+    if (currentAiRecs) return;
     setAiLoading(true);
     await new Promise((r) => setTimeout(r, 900));
-    setAiRecs(makeRecs(lead));
+    setAiRecs({ leadId: lead.id, recs: makeRecs(lead) });
     setAiLoading(false);
   };
 
@@ -171,10 +174,12 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
 
             {/* SUMMARY */}
             <TabsContent value="summary" className="mt-0">
-              {lead.summary ? (
+              {loadingFull ? (
+                <Skeleton className="h-24 mb-4" />
+              ) : (fullLead?.summary ?? lead.summary) ? (
                 <div className="mb-5 rounded-lg border bg-muted/30 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">AI Summary</p>
-                  <p className="text-sm leading-relaxed">{lead.summary}</p>
+                  <p className="text-sm leading-relaxed">{fullLead?.summary ?? lead.summary}</p>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground italic mb-4">No summary available yet.</p>
@@ -231,9 +236,9 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
                   {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20" />)}
                   <p className="text-center text-xs text-muted-foreground">Analysing conversation data…</p>
                 </div>
-              ) : aiRecs && (
+              ) : currentAiRecs && (
                 <div className="flex flex-col gap-2.5">
-                  {aiRecs.map((rec, i) => (
+                  {currentAiRecs.map((rec, i) => (
                     <div key={i} className="rounded-lg border p-4">
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <p className="text-sm font-semibold">{rec.title}</p>

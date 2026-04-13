@@ -129,6 +129,10 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<LeadRow | null>(null);
   const [quoteModal, setQuoteModal] = useState<{ lead: LeadRow; quote: QuoteRequest } | null>(null);
   const [exported, setExported] = useState(false);
+  // Track which quote leads the admin has already seen (persists until page reload)
+  const [viewedQuotes, setViewedQuotes] = useState<Set<string>>(new Set());
+  const markQuoteViewed = (leadId: string) =>
+    setViewedQuotes((prev) => new Set([...prev, leadId]));
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -168,9 +172,12 @@ export default function LeadsPage() {
 
   const interests = ["All", ...Array.from(new Set(leads.map((l) => l.interest).filter(Boolean) as string[]))];
 
-  // Count leads needing urgent attention
+  // Count unreviewed quote requests
   const urgentCount = leads.filter(
-    (l) => l.quoteRequest && l.status !== LeadStatus.QUOTED && l.status !== LeadStatus.CLOSED
+    (l) => l.quoteRequest &&
+      l.status !== LeadStatus.QUOTED &&
+      l.status !== LeadStatus.CLOSED &&
+      !viewedQuotes.has(l.id)
   ).length;
 
   return (
@@ -261,7 +268,8 @@ export default function LeadsPage() {
                   const hasUrgentQuote =
                     !!lead.quoteRequest &&
                     lead.status !== LeadStatus.QUOTED &&
-                    lead.status !== LeadStatus.CLOSED;
+                    lead.status !== LeadStatus.CLOSED &&
+                    !viewedQuotes.has(lead.id);
 
                   return (
                     <motion.tr
@@ -269,7 +277,10 @@ export default function LeadsPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.03 }}
-                      onClick={() => setSelectedLead((s) => s?.id === lead.id ? null : lead)}
+                      onClick={() => {
+                        setSelectedLead((s) => s?.id === lead.id ? null : lead);
+                        if (lead.quoteRequest) markQuoteViewed(lead.id);
+                      }}
                       className={`cursor-pointer border-b transition-colors hover:bg-muted/50 ${
                         selectedLead?.id === lead.id ? "bg-muted/60" : ""
                       } ${hasUrgentQuote ? "bg-destructive/5 hover:bg-destructive/10" : ""}`}
@@ -298,7 +309,7 @@ export default function LeadsPage() {
                           value={lead.status}
                           onValueChange={(v) => updateStatus(lead.id, v as LeadStatus)}
                         >
-                          <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 shadow-none">
+                          <SelectTrigger className="h-auto w-auto cursor-pointer gap-1 rounded-lg border-0 bg-transparent px-1 py-0.5 shadow-none hover:bg-muted/60 focus:ring-0">
                             <StatusBadge status={lead.status} />
                           </SelectTrigger>
                           <SelectContent>
@@ -319,7 +330,10 @@ export default function LeadsPage() {
                               size="xs"
                               variant="destructive"
                               className="gap-1"
-                              onClick={() => setQuoteModal({ lead, quote: lead.quoteRequest! })}
+                              onClick={() => {
+                              markQuoteViewed(lead.id);
+                              setQuoteModal({ lead, quote: lead.quoteRequest! });
+                            }}
                             >
                               <FileText className="size-3" />
                               Quote
